@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e0f7fa;
+            margin: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #00796b;
+        }
+        .container {
+            display: flex;
+            justify-content: space-between;
+        }
+        .box {
+            border: 1px solid #00796b;
+            border-radius: 8px;
+            padding: 20px;
+            background-color: #ffffff;
+            width: 45%;
+        }
+        button {
+            background-color: #00796b;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #004d40;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #00796b;
+            padding: 10px;
+            text-align: left;
+        }
+        .remove-button {
+            background-color: #e57373;
+            border: none;
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .remove-button:hover {
+            background-color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <h1>Expense Tracker System</h1>
+    <nav class="navbar">
+        <h1>Dashboard</h1>
+        <button class="btn logout-btn" onclick="window.location.href='/logout'">Logout</button>
+    </nav>
+    <div class="container">
+        <div class="box">
+            <h3>Add Budget</h3>
+            <input type="number" id="budgetInput" placeholder="Budget" /><br><br>
+            <button onclick="addBudget()">Add Budget</button>
+        </div>
+        
+        <div class="box">
+            <h3>Add Expense</h3>
+            <input type="text" id="expenseTitleInput" placeholder="Expense Title" /><br><br>
+            <input type="number" id="expenseAmountInput" placeholder="Amount" /><br><br>
+            <button onclick="addExpense()">Add Expense</button>
+            <button onclick="resetAll()">Reset All</button>
+        </div>
+    </div>
+
+    <div class="box">
+        <h3>Expense History</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Expense Name</th>
+                    <th>Amount</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="expenseList"></tbody>
+        </table>
+        <h4>Total Budget: <span id="totalBudget">0.00</span></h4>
+        <h4>Total Expenses: <span id="totalExpenses">0.00</span></h4>
+        <h4>Budget Left: <span id="budgetLeft">0.00</span></h4>
+    </div>
+
+    <script>
+        let totalBudget = 0;
+        let totalExpenses = 0;
+    
+        async function fetchData() {
+            try {
+                const response = await fetch('/api/data');
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        window.location.href = "/";
+                        return;
+                    }
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                const data = await response.json();
+    
+                totalBudget = data.budget;
+                totalExpenses = data.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    
+                document.getElementById('totalBudget').innerText = totalBudget.toFixed(2);
+                document.getElementById('totalExpenses').innerText = totalExpenses.toFixed(2);
+                updateBudgetLeft();
+    
+                const expenseList = document.getElementById('expenseList');
+                expenseList.innerHTML = '';
+                data.expenses.forEach(expense => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${expense.name}</td>
+                        <td>${expense.amount.toFixed(2)}</td>
+                        <td><button class="remove-button" onclick="removeExpense(this, ${expense.amount})">Remove</button></td>
+                    `;
+                    expenseList.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        }
+    
+        async function addBudget() {
+            const budgetInput = document.getElementById('budgetInput');
+            const newBudget = parseFloat(budgetInput.value);
+        
+            if (!isNaN(newBudget) && newBudget > 0) {
+                try {
+                    const response = await fetch('/api/budget', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ budget: newBudget }) // Send the amount to add
+                    });
+        
+                    if (!response.ok) throw new Error('Failed to update budget');
+        
+                    const result = await response.json();
+                    console.log("Budget update response:", result); // Debug the response
+        
+                    // Update local totalBudget with the server's confirmed value
+                    totalBudget = result.budget; // Use server value, which now reflects the addition
+                    document.getElementById('totalBudget').innerText = totalBudget.toFixed(2);
+                    updateBudgetLeft();
+                } catch (error) {
+                    console.error("Error adding budget:", error);
+                    alert("Failed to add budget. Please try again.");
+                }
+            } else {
+                alert("Please enter a valid budget amount.");
+            }
+        
+            budgetInput.value = '';
+        }
+    
+        async function addExpense() {
+            const expenseTitleInput = document.getElementById('expenseTitleInput');
+            const expenseAmountInput = document.getElementById('expenseAmountInput');
+            const expenseName = expenseTitleInput.value;
+            const expenseAmount = parseFloat(expenseAmountInput.value);
+    
+            if (expenseName && !isNaN(expenseAmount) && expenseAmount > 0) {
+                await fetch('/api/expense', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: expenseName, amount: expenseAmount })
+                });
+    
+                totalExpenses += expenseAmount;
+                document.getElementById('totalExpenses').innerText = totalExpenses.toFixed(2);
+                updateBudgetLeft();
+    
+                const expenseList = document.getElementById('expenseList');
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${expenseName}</td>
+                    <td>${expenseAmount.toFixed(2)}</td>
+                    <td><button class="remove-button" onclick="removeExpense(this, ${expenseAmount})">Remove</button></td>
+                `;
+                expenseList.appendChild(row);
+            } else {
+                alert("Please enter a valid expense name and amount.");
+            }
+    
+            expenseTitleInput.value = '';
+            expenseAmountInput.value = '';
+        }
+    
+        async function removeExpense(button, amount) {
+            const row = button.parentElement.parentElement;
+            row.parentElement.removeChild(row);
+            totalExpenses -= amount;
+            document.getElementById('totalExpenses').innerText = totalExpenses.toFixed(2);
+            updateBudgetLeft();
+        }
+    
+        async function resetAll() {
+            await fetch('/api/reset', { method: 'POST' });
+    
+            totalBudget = 0;
+            totalExpenses = 0;
+            document.getElementById('totalBudget').innerText = '0.00';
+            document.getElementById('totalExpenses').innerText = '0.00';
+            document.getElementById('budgetLeft').innerText = '0.00';
+            document.getElementById('expenseList').innerHTML = '';
+        }
+    
+        function updateBudgetLeft() {
+            const budgetLeft = totalBudget - totalExpenses;
+            document.getElementById('budgetLeft').innerText = budgetLeft > 0 ? budgetLeft.toFixed(2) : '0.00';
+        }
+
+        document.getElementById('logoutButton').addEventListener('click', function() {
+            window.location.href = "/logout";  // Redirects to Flask logout route
+        });       
+
+        fetchData();
+    </script>    
+</body>
+</html>
