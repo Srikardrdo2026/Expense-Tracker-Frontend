@@ -205,7 +205,8 @@
                 const response = await fetch('https://expense-tracker-backend-oe7p.onrender.com/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify({ email, password }),
+                    credentials: 'include'
                 });
         
                 const result = await response.json();
@@ -237,7 +238,8 @@
                 const response = await fetch('https://expense-tracker-backend-oe7p.onrender.com/api/signup', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, email, password })
+                    body: JSON.stringify({ username, email, password }),
+                    credentials: 'include'
                 });
 
                 if (!response.ok) {
