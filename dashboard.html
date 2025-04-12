@@ -104,7 +104,9 @@
     
         async function fetchData() {
             try {
-                const response = await fetch('https://expense-tracker-backend-oe7p.onrender.com/api/data');
+                const response = await fetch('https://expense-tracker-backend-oe7p.onrender.com/api/data', {
+                    credentials: 'include'
+                });
                 if (!response.ok) {
                     if (response.status === 401) {
                         window.location.href = "/";
@@ -146,16 +148,16 @@
                     const response = await fetch('https://expense-tracker-backend-oe7p.onrender.com/api/budget', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ budget: newBudget }) // Send the amount to add
+                        body: JSON.stringify({ budget: newBudget }),
+                        credentials: 'include'
                     });
-        
+    
                     if (!response.ok) throw new Error('Failed to update budget');
-        
+    
                     const result = await response.json();
-                    console.log("Budget update response:", result); // Debug the response
-        
-                    // Update local totalBudget with the server's confirmed value
-                    totalBudget = result.budget; // Use server value, which now reflects the addition
+                    console.log("Budget update response:", result);
+    
+                    totalBudget = result.budget;
                     document.getElementById('totalBudget').innerText = totalBudget.toFixed(2);
                     updateBudgetLeft();
                 } catch (error) {
@@ -165,7 +167,7 @@
             } else {
                 alert("Please enter a valid budget amount.");
             }
-        
+    
             budgetInput.value = '';
         }
     
@@ -179,7 +181,8 @@
                 await fetch('https://expense-tracker-backend-oe7p.onrender.com/api/expense', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: expenseName, amount: expenseAmount })
+                    body: JSON.stringify({ name: expenseName, amount: expenseAmount }),
+                    credentials: 'include'
                 });
     
                 totalExpenses += expenseAmount;
@@ -211,7 +214,10 @@
         }
     
         async function resetAll() {
-            await fetch('https://expense-tracker-backend-oe7p.onrender.com/api/reset', { method: 'POST' });
+            await fetch('https://expense-tracker-backend-oe7p.onrender.com/api/reset', {
+                method: 'POST',
+                credentials: 'include'
+            });
     
             totalBudget = 0;
             totalExpenses = 0;
@@ -225,12 +231,12 @@
             const budgetLeft = totalBudget - totalExpenses;
             document.getElementById('budgetLeft').innerText = budgetLeft > 0 ? budgetLeft.toFixed(2) : '0.00';
         }
-
-        document.getElementById('logoutButton').addEventListener('click', function() {
-            window.location.href = "https://expense-tracker-backend-oe7p.onrender.com/logout";  // Redirects to Flask logout route
-        });       
-
+    
+        document.getElementById('logoutButton').addEventListener('click', function () {
+            window.location.href = "https://expense-tracker-backend-oe7p.onrender.com/logout";
+        });
+    
         fetchData();
-    </script>    
+    </script>      
 </body>
 </html>
