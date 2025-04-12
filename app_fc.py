@@ -10,15 +10,12 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__ , template_folder=BASE_DIR)
 app.secret_key = 'your_secret_key'  # Replace with a secure key
-CORS(app, supports_credentials=True, origins=["https://expense-tracker-frontend-opal.vercel.app"])
+CORS(app, supports_credentials=True, origins=["https://srikardrdo2026.github.io"])
 
-MONGO_USER = os.getenv("MONGO_USER", "Srikar")
-MONGO_PASSWORD = os.getenv("MONGO_PASSWORD", "One_Piece")
-MONGO_HOST = os.getenv("MONGO_HOST", "localhost")
-MONGO_PORT = os.getenv("MONGO_PORT", "27017")
+
 MONGO_DB = os.getenv("MONGO_DB", "expense_tracker")
 
-MONGO_URI = f"mongodb://{MONGO_USER}:{MONGO_PASSWORD}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin"
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://Srikardrdo:<One_Piece2005>@cluster0.7zcokus.mongodb.net/expense_tracker?retryWrites=true&w=majority&appName=Cluster0")
 
 client = MongoClient(MONGO_URI)
 db = client["expense_tracker"]
