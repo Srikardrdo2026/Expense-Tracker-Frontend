@@ -154,6 +154,3 @@ def reset_data():
 def logout():
     session.pop('user', None)
     return render_template("index.html")  # Ensure login.html exists
-
-if __name__ == "__main__":
-    app.run(debug=True)
