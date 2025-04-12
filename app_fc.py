@@ -1,3 +1,4 @@
+from flask_cors import CORS
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from werkzeug.security import check_password_hash, generate_password_hash
 from bson.objectid import ObjectId
