@@ -10,6 +10,7 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__ , template_folder=BASE_DIR)
 app.secret_key = 'your_secret_key'  # Replace with a secure key
+CORS(app, supports_credentials=True, origins=["https://expense-tracker-frontend-opal.vercel.app"])
 
 MONGO_USER = os.getenv("MONGO_USER", "Srikar")
 MONGO_PASSWORD = os.getenv("MONGO_PASSWORD", "One_Piece")
