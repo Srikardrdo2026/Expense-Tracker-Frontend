@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Expense Tracker System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e0f7fa;
+            margin: 0;
+            padding: 20px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #004d40;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .logout-btn {
+            background-color: #e57373;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+        }
+        .logout-btn:hover {
+            background-color: #c62828;
+        }
+        main {
+            margin-top: 20px;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: space-between;
+        }
+        .box {
+            border: 1px solid #00796b;
+            border-radius: 8px;
+            padding: 20px;
+            background-color: #ffffff;
+            flex: 1 1 45%;
+            min-width: 300px;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        button {
+            background-color: #00796b;
+            color: white;
+            border: none;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #004d40;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #00796b;
+            padding: 10px;
+            text-align: left;
+        }
+        .remove-button {
+            background-color: #e57373;
+            padding: 5px 10px;
+        }
+        .remove-button:hover {
+            background-color: #c62828;
+        }
+        .summary {
+            margin-top: 20px;
+            border: 1px solid #00796b;
+            border-radius: 8px;
+            background-color: #ffffff;
+            padding: 20px;
+        }
+        .summary h4 {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Expense Tracker Dashboard</h1>
+        <button id="logoutButton" class="logout-btn">Logout</button>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="box">
+                <h3>Add Budget</h3>
+                <input type="number" id="budgetInput" placeholder="Budget" />
+                <button onclick="addBudget()">Add Budget</button>
+            </div>
+
+            <div class="box">
+                <h3>Add Expense</h3>
+                <input type="text" id="expenseTitleInput" placeholder="Expense Title" />
+                <input type="number" id="expenseAmountInput" placeholder="Amount" />
+                <button onclick="addExpense()">Add Expense</button>
+                <button onclick="resetAll()">Reset All</button>
+            </div>
+        </div>
+
+        <div class="box">
+            <h3>Expense History</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Expense Name</th>
+                        <th>Amount</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="expenseList"></tbody>
+            </table>
+        </div>
+
+        <div class="summary">
+            <h4>Total Budget: <span id="totalBudget">0.00</span></h4>
+            <h4>Total Expenses: <span id="totalExpenses">0.00</span></h4>
+            <h4>Budget Left: <span id="budgetLeft">0.00</span></h4>
+        </div>
+    </main>
+
+    <script>
+        const BACKEND_URL = "https://expense-tracker-backend-k0eu.onrender.com";
+const socket = new WebSocket(`wss://${BACKEND_URL.replace("https://", "")}/ws`);
+
+// Check if user is authenticated
+if (!localStorage.getItem("token") || !localStorage.getItem("user")) {
+    window.location.href = "/index.html";
+}
+
+// WebSocket event handlers
+socket.onopen = () => {
+    console.log("WebSocket connected");
+    fetchExpenses();
+};
+
+socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.event === "expense_update") {
+        updateExpenseTable(data.expenses);
+    }
+};
+
+socket.onclose = () => {
+    console.log("WebSocket disconnected");
+    // Attempt to reconnect after 5 seconds
+    setTimeout(() => {
+        window.location.reload();
+    }, 5000);
+};
+
+async function fetchExpenses() {
+    try {
+        const user = localStorage.getItem("user");
+        const token = localStorage.getItem("token");
+        if (!user || !token) {
+            window.location.href = "/index.html";
+            return;
+        }
+        const response = await fetch(`${BACKEND_URL}/api/expenses/${user}`, {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = await response.json();
+        if (response.ok) {
+            updateExpenseTable(data.expenses);
+        } else if (response.status === 401) {
+            alert("Session expired. Please log in again.");
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            window.location.href = "/index.html";
+        } else {
+            alert(data.message || "Error fetching expenses");
+        }
+    } catch (error) {
+        console.error("Error fetching expenses:", error);
+        alert("Failed to connect to server. Please try again later.");
+    }
+}
+
+async function fetchBudget() {
+    try {
+        const user = localStorage.getItem("user");
+        const token = localStorage.getItem("token");
+        if (!user || !token) {
+            window.location.href = "/index.html";
+            return;
+        }
+        const response = await fetch(`${BACKEND_URL}/api/budgets/${user}`, {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = await response.json();
+        if (response.ok && data.budget) {
+            document.getElementById("total-budget").textContent = data.budget.amount.toFixed(2);
+            document.getElementById("total-expenses").textContent = data.budget.total_expenses.toFixed(2);
+            document.getElementById("budget-left").textContent = data.budget.remaining.toFixed(2);
+        } else if (response.status === 401) {
+            alert("Session expired. Please log in again.");
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            window.location.href = "/index.html";
+        } else {
+            document.getElementById("total-budget").textContent = "0.00";
+            document.getElementById("total-expenses").textContent = "0.00";
+            document.getElementById("budget-left").textContent = "0.00";
+        }
+    } catch (error) {
+        console.error("Error fetching budget:", error);
+        alert("Failed to connect to server. Please try again later.");
+    }
+}
+
+function updateExpenseTable(expenses) {
+    const tableBody = document.getElementById("expense-table");
+    tableBody.innerHTML = "";
+    expenses.forEach(expense => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td class="p-2 border">${expense.description || "No description"}</td>
+            <td class="p-2 border">${expense.amount.toFixed(2)}</td>
+            <td class="p-2 border">
+                <button onclick="deleteExpense('${expense._id}')" class="bg-red-500 text-white px-2 py-1 rounded">Delete</button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+document.getElementById("budget-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const amount = parseFloat(document.getElementById("budget-amount").value);
+    const submitButton = e.target.querySelector("button[type='submit']");
+    submitButton.disabled = true;
+    try {
+        if (isNaN(amount) || amount <= 0) {
+            alert("Please enter a valid budget amount greater than zero.");
+            return;
+        }
+        const response = await fetch(`${BACKEND_URL}/api/budgets`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${localStorage.getItem("token")}`
+            },
+            body: JSON.stringify({ amount })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            alert(data.message);
+            fetchBudget();
+        } else if (response.status === 401) {
+            alert("Session expired. Please log in again.");
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            window.location.href = "/index.html";
+        } else {
+            alert(data.error || "Error adding budget");
+        }
+    } catch (error) {
+        console.error("Error adding budget:", error);
+        alert("Failed to connect to server. Please try again later.");
+    } finally {
+        submitButton.disabled = false;
+    }
+});
+
+document.getElementById("expense-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const description = document.getElementById("expense-description").value.trim();
+    const amount = parseFloat(document.getElementById("expense-amount").value);
+    const submitButton = e.target.querySelector("button[type='submit']");
+    submitButton.disabled = true;
+    try {
+        if (isNaN(amount) || amount <= 0) {
+            alert("Please enter a valid expense amount greater than zero.");
+            return;
+        }
+        const response = await fetch(`${BACKEND_URL}/api/expenses`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${localStorage.getItem("token")}`
+            },
+            body: JSON.stringify({ description, amount })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            alert(data.message);
+            fetchExpenses();
+            fetchBudget();
+            socket.send(JSON.stringify({ event: "new_expense", user_id: localStorage.getItem("user"), data: { description, amount } }));
+        } else if (response.status === 401) {
+            alert("Session expired. Please log in again.");
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            window.location.href = "/index.html";
+        } else {
+            alert(data.error || "Error adding expense");
+        }
+    } catch (error) {
+        console.error("Error adding expense:", error);
+        alert("Failed to connect to server. Please try again later.");
+    } finally {
+        submitButton.disabled = false;
+    }
+});
+
+async function deleteExpense(expenseId) {
+    if (!confirm("Are you sure you want to delete this expense?")) return;
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/expenses/${expenseId}`, {
+            method: "DELETE",
+            headers: {
+                "Authorization": `Bearer ${localStorage.getItem("token")}`
+            }
+        });
+        const data = await response.json();
+        if (response.ok) {
+            alert(data.message);
+            fetchExpenses();
+            fetchBudget();
+        } else if (response.status === 401) {
+            alert("Session expired. Please log in again.");
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            window.location.href = "/index.html";
+        } else {
+            alert(data.error || "Error deleting expense");
+        }
+    } catch (error) {
+        console.error("Error deleting expense:", error);
+        alert("Failed to connect to server. Please try again later.");
+    }
+}
+
+async function resetData() {
+    if (!confirm("Are you sure you want to reset all data? This cannot be undone.")) return;
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/reset`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${localStorage.getItem("token")}`
+            }
+        });
+        const data = await response.json();
+        if (response.ok) {
+            alert(data.message);
+            fetchExpenses();
+            fetchBudget();
+        } else if (response.status === 401) {
+            alert("Session expired. Please log in again.");
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            window.location.href = "/index.html";
+        } else {
+            alert(data.error || "Error resetting data");
+        }
+    } catch (error) {
+        console.error("Error resetting data:", error);
+        alert("Failed to connect to server. Please try again later.");
+    }
+}
+
+function logout() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.href = "/index.html";
+}
+
+// Initial fetch
+fetchExpenses();
+fetchBudget();
+    </script>
+</body>
+</html>

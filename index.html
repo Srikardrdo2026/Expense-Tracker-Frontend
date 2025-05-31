@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login & Signup Page</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #e6f0fa;
+        }
+        
+        .container {
+            position: relative;
+            width: 400px;
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .form-box {
+            padding: 40px;
+        }
+        
+        .form {
+            display: none;
+        }
+        
+        .form.active {
+            display: block;
+        }
+        
+        h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            background: #f9f9f9;
+        }
+        
+        .input-group input:focus {
+            border-color: #007bff;
+        }
+        
+        .btn {
+            width: 50%;
+            padding: 12px;
+            background: #007bff;
+            border: none;
+            border-radius: 25px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin: 0 auto;
+            display: block;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+        }
+        
+        .toggle-text {
+            text-align: center;
+            margin-top: 20px;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: #007bff;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0;
+        }
+        
+        .toggle-btn:hover {
+            text-decoration: underline;
+        }
+        
+        .toggle-btn:focus {
+            outline: 2px solid #007bff;
+            outline-offset: 2px;
+        }
+
+        .error-message {
+            text-align: center;
+            color: red;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-box">
+            <!-- Login Form -->
+            <div class="form login-form active" id="loginForm">
+                <h2>Login</h2>
+                <form onsubmit="return false;">
+                    <div class="input-group">
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" name="email" placeholder="Enter your email" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" name="password" placeholder="Enter your password" required>
+                    </div>
+                    <div id="error-message" class="error-message"></div>
+                    <button type="button" class="btn" onclick="handleLogin(event)">Login</button>
+                    <p class="toggle-text">Don't have an account? 
+                        <button type="button" class="toggle-btn" onclick="toggleForm()">Sign Up</button>
+                    </p>
+                </form>
+            </div>
+
+            <!-- Signup Form -->
+            <div class="form signup-form" id="signupForm">
+                <h2>Sign Up</h2>
+                <form onsubmit="return false;">
+                    <div class="input-group">
+                        <label for="signup-username">Username</label>
+                        <input type="text" id="signup-username" placeholder="Enter your username" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="signup-email">Email</label>
+                        <input type="email" id="signup-email" placeholder="Enter your email" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="signup-password">Password</label>
+                        <input type="password" id="signup-password" placeholder="Enter your password" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="confirm-password">Confirm Password</label>
+                        <input type="password" id="confirm-password" placeholder="Enter your password" required>
+                    </div>
+                    <button type="button" class="btn" onclick="handleSignup(event)">Sign Up</button>
+                    <p class="toggle-text">Already have an account? 
+                        <button type="button" class="toggle-btn" onclick="toggleForm()">Login</button>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        const BACKEND_URL = process.env.BACKEND_URL || "https://expense-tracker-backend-k0eu.onrender.com";
+
+        function toggleSection(section) {
+            document.getElementById("login-section").classList.toggle("hidden", section !== "login");
+            document.getElementById("signup-section").classList.toggle("hidden", section !== "signup");
+        }
+
+        document.getElementById("login-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await response.json();
+                if (data.status === "success") {
+                    localStorage.setItem("token", data.token);
+                    localStorage.setItem("user", data.email);
+                    window.location.href = "/dashboard.html";
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error("Login error:", error);
+                alert("An error occurred during login.");
+            }
+        });
+
+        document.getElementById("signup-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const username = document.getElementById("signup-username").value;
+            const email = document.getElementById("signup-email").value;
+            const password = document.getElementById("signup-password").value;
+            const confirmPassword = document.getElementById("confirm-password").value;
+            if (password !== confirmPassword) {
+                alert("Passwords do not match!");
+                return;
+            }
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/signup`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, email, password })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    alert(data.message);
+                    toggleSection("login");
+                } else {
+                    alert(data.error);
+                }
+            } catch (error) {
+                console.error("Signup error:", error);
+                alert("An error occurred during signup.");
+            }
+        });
+    </script>
+</body>
+</html>
